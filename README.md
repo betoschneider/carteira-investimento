@@ -31,17 +31,13 @@ cd carteira-investimento
 
 2. Instale as dependências:
 ```bash
-pip install -r requirements.txt
-```
-ou com Poetry:
-```bash
-poetry install
+uv sync
 ```
 
 ### Executando a Aplicação
 
 ```bash
-streamlit run main.py
+uv run streamlit run main.py
 ```
 
 A aplicação abrirá em seu navegador no endereço `http://localhost:8501`

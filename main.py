@@ -48,7 +48,7 @@ def main():
     st.title("⚖️ Carteira de investimento - B3")
     st.write(f"Última consulta à API: {data_atualizacao}")
 
-    col1, col2, col3 = st.columns([1, 1, 2])
+    col1, col2, col3 = st.columns([1, 2, 1])
     
     with col1:
         cotas = st.number_input("Quantidade de cotas", min_value=1, value=1)
