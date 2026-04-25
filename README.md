@@ -21,7 +21,23 @@ A aplicação "Balanceador B3" permite que você gerencie e visualize sua cartei
 
 ## 🚀 Como Usar
 
-### Instalação
+### Com Docker (Recomendado)
+
+1. Certifique-se de ter Docker e Docker Compose instalados
+2. Clone o repositório e navegue até a pasta:
+```bash
+git clone <repositório>
+cd carteira-investimento
+```
+
+3. Execute com Docker Compose:
+```bash
+docker-compose up --build
+```
+
+A aplicação estará disponível em `http://localhost:8501`
+
+### Instalação Local
 
 1. Clone o repositório:
 ```bash
@@ -48,7 +64,10 @@ A aplicação abrirá em seu navegador no endereço `http://localhost:8501`
 carteira-investimento/
 ├── main.py              # Arquivo principal da aplicação Streamlit
 ├── acoes.csv            # Base de dados com lista de ações
-├── pyproject.toml       # Configuração de dependências (Poetry)
+├── pyproject.toml       # Configuração de dependências (Poetry/uv)
+├── uv.lock              # Lock file das dependências (uv)
+├── Dockerfile           # Configuração Docker da aplicação
+├── docker-compose.yml   # Orquestração Docker
 └── README.md            # Este arquivo
 ```
 
@@ -109,6 +128,29 @@ A aplicação utiliza cache de 1 hora para cotações a fim de:
 
 Desenvolvido por Beto Schneider
 
-## 📄 Licença
+## � Docker
 
-Este projeto é de uso livre.
+O projeto inclui configuração Docker completa para facilitar o deployment:
+
+### Arquivos Docker
+- **Dockerfile**: Imagem baseada em Python 3.12 com uv para gerenciamento de dependências
+- **docker-compose.yml**: Orquestração com persistência de dados
+
+### Volumes
+- `acoes.csv`: Arquivo de dados das ações é persistido no host
+- `~/.streamlit`: Cache do Streamlit para melhor performance
+
+### Comandos Úteis
+```bash
+# Construir e executar
+docker-compose up --build
+
+# Executar em background
+docker-compose up -d
+
+# Parar containers
+docker-compose down
+
+# Ver logs
+docker-compose logs -f
+```
