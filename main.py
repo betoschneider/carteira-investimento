@@ -3,142 +3,120 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
+from datetime import datetime
 
-def get_current_prices(ticker_list):
-    prices = {}
-    acoes = []
+# --- CAMADA DE DADOS ---
+
+@st.cache_data(ttl=3600) # Cache de 1 hora para não sobrecarregar a API e o HomeLab
+def fetch_prices(ticker_list):
+    """Busca preços na API com tratamento de erros."""
+    data_list = []
     for t in ticker_list:
-        ticker_obj = yf.Ticker(t)
-        prices[t.replace(".SA", "")] = round(ticker_obj.fast_info['last_price'], 2)
-        print(t.replace(".SA", ""), ": ", round(prices[t.replace(".SA", "")], 2))
-        acoes.append([t.replace(".SA", ""), round(prices[t.replace(".SA", "")], 2)])
-    return acoes
+        try:
+            ticker_obj = yf.Ticker(t)
+            price = round(ticker_obj.fast_info['last_price'], 2)
+            data_list.append([t.replace(".SA", ""), price])
+        except Exception as e:
+            st.error(f"Erro ao buscar {t}: {e}")
+    return data_list
 
-def get_acoes():
-    df = pd.read_csv("acoes.csv")
-    # filtre o dataframe para pegar apenas as ações ativas
-    df = df[df['status'] == 'ativo']
-    # para cada acao, adiciona o sufixo '.SA'
-    df['acao'] = df['acao'] + '.SA'
-    ticker_list = df['acao'].to_list()
-    
-    acoes = get_current_prices(ticker_list)
-    df = pd.DataFrame(acoes, columns=['acao', 'preco'])
-    df['status'] = 'ativo'
-    df['data'] = pd.to_datetime('now')
-    
-    df.to_csv("acoes.csv", index=False)
-    
-    return df
+def get_base_data():
+    """Lê apenas a lista de ações do CSV."""
+    df_base = pd.read_csv("acoes.csv")
+    # Garante que pegamos apenas os tickers únicos ativos
+    tickers = (df_base[df_base['status'] == 'ativo']['acao'] + '.SA').unique().tolist()
+    return tickers
+
+# --- LOGICA DE NEGOCIO ---
 
 def main():
-    df = get_acoes()
-    data = df['data'].max().strftime("%d/%m/%Y %H:%M:%S")
+    st.set_page_config(
+        page_title="Balanceador B3", 
+        # layout="wide"
+    )
     
-    qtd_acoes = df['acao'].count()
-    valor_total = df['preco'].sum()
+    # 1. Busca Dados (Otimizado com Cache)
+    ticker_list = get_base_data()
     
-    st.title("Valor do investimento")
-    st.write(f"Última atualização: {data}")
+    with st.spinner('Atualizando cotações do Yahoo Finance...'):
+        precos_atualizados = fetch_prices(ticker_list)
     
-    col1, col2 = st.columns(2)
+    df = pd.DataFrame(precos_atualizados, columns=['Ação', 'Preço'])
+    data_atualizacao = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+    # --- UI ---
+    st.title("⚖️ Carteira de investimento - B3")
+    st.write(f"Última consulta à API: {data_atualizacao}")
+
+    col1, col2, col3 = st.columns([1, 1, 2])
+    
     with col1:
-        cotas = st.number_input("Quantidade de cotas", value=1)
+        cotas = st.number_input("Quantidade de cotas", min_value=1, value=1)
         
-        p_max = df['preco'].max()
-        df['qtd'] = df.apply(lambda x: round(p_max / x['preco']), axis=1)
-        df['qtd'] = df['qtd'] * cotas
-        df['total'] = df['preco'] * df['qtd']
-        df.sort_values(by='total', ascending=False, inplace=True)
-        df = df[['acao', 'preco', 'qtd', 'total']]
-        df.rename(
-            columns={
-                'acao': 'Ação',
-                'preco': 'Preço',
-                'qtd': 'Quantidade',
-                'total': 'Total'
-            }, inplace=True
-        )
+        # Lógica da Âncora pelo Preço Máximo
+        p_max = df['Preço'].max()
+        df['Quantidade'] = df['Preço'].apply(lambda x: round(p_max / x))
+        df['Quantidade'] = df['Quantidade'] * cotas
+        df['Total'] = round(df['Preço'] * df['Quantidade'], 2)
+        
         soma_total = df['Total'].sum()
-        df['%'] = round(df['Total'] / soma_total * 100, 0)
+        df['%'] = round((df['Total'] / soma_total) * 100, 1)
+        
     with col2:
-        st.text_input("Valor total", value=f"R$ {soma_total:.2f}", disabled=True)
-        # st.write(f"Valor total: R$ {soma_total:.2f}")
-    st.dataframe(df, hide_index=True, height=430)
+        st.metric("Investimento Estimado", f"R$ {soma_total:,.2f}")
     
-    # visualização em treemap
-    fig = px.treemap(
-        df, 
-        path=['Ação'], 
-        values='Total',
-        custom_data=['Quantidade', 'Preço'],
-        title="Distribuição do Portfólio"
-    )
-    # Ajustando o que aparece ao passar o mouse (hover) e no texto
-    fig.update_traces(
-        textinfo="label+percent entry",
-        hovertemplate="<b>%{label}</b><br>Qtd: %{customdata[0]}<br>Preço: R$ %{customdata[1]}<br>Total: R$ %{value:.2f}"
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    # Tabela principal
+    df_sorted = df.sort_values(by='Total', ascending=False)
+    st.dataframe(df_sorted, hide_index=True, width='stretch', height=430)
 
+    # --- VISUALIZAÇÃO ---
     
-    # Visualização em barras
-    fig_bar = px.bar(
-        df,
-        x='Total',
-        y='Ação',
-        orientation='h',
-        title="Valor Total por Ativo e Quantidade",
-        text='Quantidade', # Mostra a quantidade escrita na barra
-        color='Total',
-        color_continuous_scale='Blues'
-    )
-    fig_bar.update_traces(textposition='outside')
-    fig_bar.update_layout(yaxis={'categoryorder':'total ascending'})
-    st.plotly_chart(fig_bar, use_container_width=True)
-    
-    
-    # Visualização em bolhas
-    fig = px.scatter(
-        df, 
-        x='Ação', 
-        y='Total', 
-        size='Total', 
-        color='Ação',
-        title="Validação de Equilíbrio (Todas as barras devem ter altura similar)",
-        text='Quantidade'
-    )
-    fig.update_traces(textposition='top center')
-    fig.update_layout(yaxis_range=[0, df['Total'].max() * 1.2]) # Para dar respiro no topo
-    st.plotly_chart(fig, use_container_width=True)
+    tab1, tab2, tab3, tab4 = st.tabs(["TreeMap", "Equilíbrio Real", "Análise de Barras", "Dispersão de Peso"])
 
-    
-    # Visualização em barras horizontais com linha de equilíbrio
-    # Calculando a média que o balanceamento deveria atingir
-    valor_medio_alvo = df['Total'].mean()
-    fig = go.Figure()
-    # Barras com o valor total por ação
-    fig.add_trace(go.Bar(
-        x=df['Total'],
-        y=df['Ação'],
-        orientation='h',
-        name='Valor Alocado',
-        text=df['Quantidade'], # Mostra a Qtd dentro da barra
-        textposition='auto',
-        marker_color='royalblue'
-    ))
-    # Linha vertical indicando o equilíbrio perfeito (a média)
-    fig.add_shape(
-        type="line", line=dict(dash="dash", color="red", width=2),
-        x0=valor_medio_alvo, x1=valor_medio_alvo, y0=-0.5, y1=len(df)-0.5
-    )
-    fig.update_layout(
-        title="Equilíbrio Financeiro por Ativo (Alvo: Média)",
-        xaxis_title="Total em R$",
-        yaxis_title="Ações",
-        showlegend=False
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    with tab1:
+        fig_tree = px.treemap(
+            df, path=['Ação'], values='Total',
+            custom_data=['Quantidade', 'Preço'],
+            title="Ocupação de Patrimônio por Ativo"
+        )
+        fig_tree.update_traces(textinfo="label+percent entry")
+        st.plotly_chart(fig_tree, use_container_width=True)
+
+    with tab2:
+        # Gráfico de Barras Horizontais com Linha de Equilíbrio
+        avg_val = df['Total'].mean()
+        fig_eq = go.Figure()
+        fig_eq.add_trace(go.Bar(
+            x=df['Total'], y=df['Ação'], orientation='h',
+            text=df['Quantidade'], textposition='auto',
+            marker_color='royalblue', name='Total Alocado'
+        ))
+        fig_eq.add_vline(x=avg_val, line_dash="dash", line_color="red", 
+                         annotation_text=f"Média: R${avg_val:.2f}")
+        fig_eq.update_layout(title="Desvio do Equilíbrio Perfeito", yaxis={'categoryorder':'total ascending'})
+        st.plotly_chart(fig_eq, use_container_width=True)
+
+    with tab3:
+        fig_bar = px.bar(df_sorted, x='Ação', y='Total', color='Total', text='Quantidade')
+        st.plotly_chart(fig_bar, use_container_width=True)
+    with tab4:
+        avg_total = df['Total'].mean()
+        fig = px.scatter(
+            df, 
+            x='Ação', 
+            y='Total', 
+            size='Total', 
+            color='Ação',
+            title="Validação de Equilíbrio (Simetria)",
+            text='Quantidade'
+        )
+        # Adiciona a linha de referência média para ver quem está acima/abaixo
+        fig.add_hline(y=avg_total, line_dash="dot", 
+                    annotation_text="Média Alvo", 
+                    line_color="grey")
+        fig.update_traces(textposition='top center')
+        fig.update_layout(yaxis_range=[0, df['Total'].max() * 1.4]) 
+        st.plotly_chart(fig, use_container_width=True)
 
 if __name__ == "__main__":
     main()
