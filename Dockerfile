@@ -1,6 +1,8 @@
 FROM python:3.12-slim
 
-# Instalar uv
+# Instalar certificados e curl para debug
+RUN apt-get update && apt-get install -y ca-certificates curl && rm -rf /var/lib/apt/lists/*
+
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
 # Configurar diretório de trabalho
@@ -11,6 +13,7 @@ COPY pyproject.toml uv.lock ./
 
 # Instalar dependências
 RUN uv sync --frozen --no-install-project --no-dev
+RUN uv lock --upgrade
 
 # Copiar código fonte
 COPY . .
