@@ -9,6 +9,7 @@ from datetime import datetime
 
 @st.cache_data(ttl=3600) # Cache de 1 hora para não sobrecarregar a API e o HomeLab
 def fetch_prices(ticker_list):
+    # fast_info é mais leve e evita erros relacionados a dividendos, mas pode falhar com tickers fracionários
     data_list = []
     for t in ticker_list:
         try:
@@ -28,17 +29,6 @@ def fetch_prices(ticker_list):
         except Exception as e:
             st.error(f"Erro ao buscar {t}: {e}")
     return data_list
-# def fetch_prices(ticker_list):
-#     """Busca preços na API com tratamento de erros."""
-#     data_list = []
-#     for t in ticker_list:
-#         try:
-#             ticker_obj = yf.Ticker(t)
-#             price = round(ticker_obj.fast_info['last_price'], 2)
-#             data_list.append([t.replace(".SA", ""), price])
-#         except Exception as e:
-#             st.error(f"Erro ao buscar {t}: {e}")
-#     return data_list
 
 def get_base_data():
     """Lê apenas a lista de ações do CSV."""
