@@ -4,6 +4,10 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
+import dotenv
+import os
+
+dotenv.load_dotenv()
 
 # --- CAMADA DE DADOS ---
 
@@ -30,11 +34,14 @@ def fetch_prices(ticker_list):
             st.error(f"Erro ao buscar {t}: {e}")
     return data_list
 
-def get_base_data():
+def get_base_data(sheet_id=None):
     """Lê apenas a lista de ações do CSV."""
-    df_base = pd.read_csv("acoes.csv")
+    if sheet_id is None:
+        sheet_id = os.getenv("SHEET_ID")
+    url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
+    df_base = pd.read_csv(url)
     # Garante que pegamos apenas os tickers únicos ativos
-    tickers = (df_base[df_base['status'] == 'ativo']['acao'] + '.SA').unique().tolist()
+    tickers = (df_base[df_base['status'] == 'Ativo']['acao'] + '.SA').unique().tolist()
     return tickers
 
 # --- LOGICA DE NEGOCIO ---
@@ -46,7 +53,8 @@ def main():
     )
     
     # 1. Busca Dados (Otimizado com Cache)
-    ticker_list = get_base_data()
+    sheet_id = os.getenv("SHEET_ID")
+    ticker_list = get_base_data(sheet_id=sheet_id)
     
     with st.spinner('Atualizando cotações do Yahoo Finance...'):
         precos_atualizados = fetch_prices(ticker_list)
@@ -55,7 +63,7 @@ def main():
     data_atualizacao = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
     # --- UI ---
-    st.title("⚖️ Carteira de investimento - B3")
+    st.title("📈 Carteira de investimento - B3")
     st.write(f"Última consulta à API: {data_atualizacao}")
 
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -77,7 +85,7 @@ def main():
     
     # Tabela principal
     df_sorted = df.sort_values(by='Total', ascending=False)
-    st.dataframe(df_sorted, hide_index=True, width='stretch', height=430)
+    st.dataframe(df_sorted, hide_index=True)
 
     # --- VISUALIZAÇÃO ---
     
@@ -127,6 +135,17 @@ def main():
         fig.update_traces(textposition='top center')
         fig.update_layout(yaxis_range=[0, df['Total'].max() * 1.4]) 
         st.plotly_chart(fig, use_container_width=True)
+    
+    st.markdown("---")
+    st.markdown(f"""
+        Para editar a carteira, acesse a planilha vinculada abaixo.
+        - [Planilha de Controle](https://docs.google.com/spreadsheets/d/{sheet_id}/edit?usp=sharing)
+        
+        As alterações são refletidas automaticamente aqui, mas podem levar até 1 hora para atualizar devido ao cache implementado para otimizar o desempenho e evitar sobrecarga na API do Yahoo Finance.
+        """
+    )
+    st.markdown("---")
+    st.markdown("Desenvolvido por [Beto Schneider](https://betoschneider.com)")
 
 if __name__ == "__main__":
     main()

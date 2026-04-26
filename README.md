@@ -6,6 +6,8 @@ Uma aplicação web interativa para balanceamento e análise de carteira de inve
 
 A aplicação "Balanceador B3" permite que você gerencie e visualize sua carteira de investimentos de forma dinâmica. Ela busca cotações em tempo real dos ativos da B3 através da API Yahoo Finance e oferece múltiplas visualizações para análise do seu portfólio.
 
+**Fonte de Dados**: Os dados das ações são carregados automaticamente de uma planilha Google Sheets pública, permitindo atualizações em tempo real sem necessidade de modificar arquivos locais.
+
 ## ✨ Recursos
 
 - **Atualização de Cotações em Tempo Real**: Integração com Yahoo Finance para buscar preços atualizados
@@ -19,7 +21,52 @@ A aplicação "Balanceador B3" permite que você gerencie e visualize sua cartei
 - **Cache de Dados**: Reduz requisições à API com cache de 1 hora
 - **Cálculo de Alocação**: Percentual de cada ativo na carteira
 
-## 🚀 Como Usar
+## � Configuração da Planilha Google Sheets
+
+### 1. Criar Planilha
+1. Acesse [Google Sheets](https://sheets.google.com)
+2. Crie uma nova planilha em branco
+
+### 2. Estrutura dos Dados
+A planilha deve conter pelo menos as seguintes colunas:
+
+| acao | status |
+|------|--------|
+| PETR4 | Ativo |
+| VALE3 | Ativo |
+| ITUB4 | Inativo |
+| BBDC4 | Ativo |
+
+**Regras importantes:**
+- **Coluna `acao`**: Código do ativo sem o sufixo `.SA` (ex: PETR4, VALE3)
+- **Coluna `status`**: Deve conter exatamente "Ativo" ou "Inativo" (case-sensitive)
+- Apenas ações com status "Ativo" serão consideradas na carteira
+
+### 3. Tornar a Planilha Pública
+1. Clique em "Compartilhar" (botão azul no canto superior direito)
+2. Em "Configurações de compartilhamento", selecione "Qualquer pessoa com o link pode visualizar"
+3. Clique em "Copiar link"
+
+### 4. Obter o ID da Planilha
+O ID está na URL da planilha:
+```
+https://docs.google.com/spreadsheets/d/[SHEET_ID]/edit#gid=0
+```
+
+Copie apenas a parte `[SHEET_ID]` (string longa entre `/d/` e `/edit`).
+
+### 5. Configurar Arquivo .env
+1. Copie o arquivo `.env.example` para `.env`:
+```bash
+cp .env.example .env
+```
+
+2. Edite o arquivo `.env` e substitua `<YOUR_SHEET_ID>` pelo ID obtido:
+```env
+SHEET_ID=1ABC...xyz123
+```
+
+## �🚀 Como Usar
 
 ### Com Docker (Recomendado)
 
@@ -58,13 +105,27 @@ uv run streamlit run main.py
 
 A aplicação abrirá em seu navegador no endereço `http://localhost:8501`
 
-## 📁 Estrutura do Projeto
+## � Variáveis de Ambiente
+
+A aplicação utiliza variáveis de ambiente para configuração:
+
+- **SHEET_ID**: ID da planilha Google Sheets pública
+
+### Arquivo .env
+```env
+SHEET_ID=1ABC...xyz123
+```
+
+**Nota**: O arquivo `.env` não deve ser versionado no Git. Use o `.env.example` como template.
+
+## �📁 Estrutura do Projeto
 
 ```
 carteira-investimento/
 ├── main.py              # Arquivo principal da aplicação Streamlit
-├── acoes.csv            # Base de dados com lista de ações
-├── pyproject.toml       # Configuração de dependências (Poetry/uv)
+├── .env                 # Arquivo com ID da planilha Google (não versionado)
+├── .env.example         # Exemplo de configuração do .env
+├── pyproject.toml       # Configuração de dependências (uv)
 ├── uv.lock              # Lock file das dependências (uv)
 ├── Dockerfile           # Configuração Docker da aplicação
 ├── docker-compose.yml   # Orquestração Docker
@@ -73,10 +134,11 @@ carteira-investimento/
 
 ## 📊 Como Funciona
 
-1. **Carregamento de Dados**: A aplicação lê o arquivo `acoes.csv` e busca os tickers ativos
+1. **Carregamento de Dados**: A aplicação lê a planilha Google Sheets configurada no arquivo `.env` e busca os tickers ativos
 2. **Busca de Preços**: Conecta à API Yahoo Finance para obter preços atualizados
 3. **Cálculo de Quantidade**: Com base no número de cotas inseridas, calcula quantas ações de cada ativo devem ser compradas
 4. **Análise de Carteira**: Exibe o total investido em cada ativo e seu percentual na carteira
+5. **Atualização Automática**: As alterações na planilha são refletidas automaticamente (com cache de 1 hora)
 
 ## 🛠️ Tecnologias Utilizadas
 
@@ -84,41 +146,34 @@ carteira-investimento/
 - **Pandas**: Manipulação e análise de dados
 - **Plotly**: Visualizações interativas de gráficos
 - **yfinance**: Integração com dados de mercado do Yahoo Finance
+- **python-dotenv**: Gerenciamento de variáveis de ambiente
+- **Google Sheets API**: Acesso direto a planilhas públicas
 - **Python**: Linguagem de programação
 
 ## 📋 Requisitos
 
 - Python >=3.12
+- dotenv >=0.9.9
 - numpy >=2.4.4
 - pandas >=3.0.2
 - plotly >=6.7.0
 - streamlit >=1.56.0
 - yfinance >=1.3.0
 
-## 📝 Arquivo acoes.csv
-
-O arquivo `acoes.csv` deve conter as seguintes colunas:
-- `acao`: Código do ativo (sem o sufixo .SA)
-- `status`: Status do ativo (ativo/inativo)
-
-Exemplo:
-```
-acao,status
-PETR4,ativo
-VALE3,ativo
-ITUB4,ativo
-```
-
-## 🔄 Cache de Dados
+## � Cache de Dados
 
 A aplicação utiliza cache de 1 hora para cotações a fim de:
 - Reduzir carga na API do Yahoo Finance
 - Melhorar performance da aplicação
 - Evitar sobrecarga do ambiente HomeLab
 
+**Nota**: As alterações na planilha Google Sheets podem levar até 1 hora para serem refletidas devido ao cache implementado.
+
 ## 📈 Futuras Melhorias
 
-- [ ] Completar a aba "Dispersão de Peso"
+- [ ] Adicionar autenticação para planilhas privadas
+- [ ] Suporte a múltiplas planilhas/carteiras
+- [ ] Validação automática dos dados da planilha
 - [ ] Adicionar gráficos de histórico
 - [ ] Persistência de dados em banco de dados
 - [ ] Relatórios exportáveis
@@ -137,7 +192,7 @@ O projeto inclui configuração Docker completa para facilitar o deployment:
 - **docker-compose.yml**: Orquestração com persistência de dados
 
 ### Volumes
-- `acoes.csv`: Arquivo de dados das ações é persistido no host
+- `.env`: Arquivo de configuração com ID da planilha Google
 - `~/.streamlit`: Cache do Streamlit para melhor performance
 
 ### Comandos Úteis

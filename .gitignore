@@ -8,3 +8,12 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Variável de ambientes
+.env
+
+# Arquivos de base de dados
+*.db
+*.sqlite
+*.csv
+*.xlsx

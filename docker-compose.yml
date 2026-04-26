@@ -7,7 +7,7 @@ services:
     ports:
       - "8501:8501"
     volumes:
-      - ./acoes.csv:/app/acoes.csv
+      - ./.env:/app/.env
       - ~/.streamlit:/root/.streamlit
     environment:
       - STREAMLIT_SERVER_HEADLESS=true
