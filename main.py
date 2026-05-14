@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 from datetime import datetime
 import dotenv
 import os
+import time
 
 dotenv.load_dotenv()
 
@@ -30,6 +31,8 @@ def fetch_prices(ticker_list):
                 price = round(yf.Ticker(t_base).fast_info['last_price'], 2)
                 
             data_list.append([t.replace(".SA", ""), price])
+            
+            time.sleep(0.2)
         except Exception as e:
             st.error(f"Erro ao buscar {t}: {e}")
     return data_list
@@ -89,7 +92,9 @@ def main():
 
     # --- VISUALIZAÇÃO ---
     
-    tab1, tab2, tab3, tab4 = st.tabs(["TreeMap", "Equilíbrio Real", "Análise de Barras", "Dispersão de Peso"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "TreeMap", "Equilíbrio Real", "Análise de Barras", "Dispersão de Peso", "Simulador de Aporte"
+    ])
 
     with tab1:
         fig_tree = px.treemap(
@@ -135,6 +140,38 @@ def main():
         fig.update_traces(textposition='top center')
         fig.update_layout(yaxis_range=[0, df['Total'].max() * 1.4]) 
         st.plotly_chart(fig, use_container_width=True)
+    with tab5:
+        st.subheader("💰 Calcular Lote por Valor de Aporte")
+        st.info("Insira quanto deseja investir e o sistema calculará a quantidade de cada ativo para manter a carteira o mais equilibrada possível.")
+        
+        valor_aporte = st.number_input("Valor total para investir (R$)", min_value=100.0, step=100.0, value=1000.0)
+        
+        if valor_aporte > 0:
+            # Lógica de cálculo: Valor ideal por ativo
+            qtd_ativos = len(df)
+            valor_alvo_por_ativo = valor_aporte / qtd_ativos
+            
+            df_simulacao = df[['Ação', 'Preço']].copy()
+            
+            # Calcula a quantidade inteira que mais se aproxima do valor alvo
+            df_simulacao['Sugerido'] = df_simulacao['Preço'].apply(lambda x: round(valor_alvo_por_ativo / x))
+            
+            # Garante que pelo menos 1 cota seja comprada se o valor for suficiente
+            df_simulacao['Sugerido'] = df_simulacao['Sugerido'].apply(lambda x: max(x, 0))
+            
+            df_simulacao['Subtotal'] = round(df_simulacao['Sugerido'] * df_simulacao['Preço'], 2)
+            
+            total_simulado = df_simulacao['Subtotal'].sum()
+            diferenca = valor_aporte - total_simulado
+            
+            # Métricas de resumo
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Total Sugerido", f"R$ {total_simulado:,.2f}")
+            c2.metric("Diferença (Sobras)", f"R$ {diferenca:,.2f}")
+            c3.metric("Eficiência", f"{(total_simulado/valor_aporte)*100:.1f}%")
+            
+            # Exibição do Lote Sugerido
+            st.table(df_simulacao[df_simulacao['Sugerido'] > 0].sort_values(by='Subtotal', ascending=False), hide_index=True)
     
     st.markdown("---")
     st.markdown(f"""
