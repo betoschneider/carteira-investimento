@@ -247,16 +247,29 @@ def main():
                 st.session_state.ativos_sorteados_rodada = []
                 st.rerun()
         else:
-            valor_aporte = st.number_input("Valor total para esta rodada (R$)", min_value=10.0, step=50.0, value=500.0, key="val_tab6")
+            col1_tab6, col2_tab6 = st.columns([1, 1])
+            with col1_tab6:
+                valor_aporte = st.number_input("Valor total para esta rodada (R$)", min_value=10.0, step=50.0, value=500.0, key="val_tab6")
+            with col2_tab6:
+                qtd_ativos_soteio = st.number_input("Quantidade de Ativos a Sortear", min_value=1, value=5, key="qtd_sorteio_tab6")
 
-            # Inicializa a variável de controle de sorteio na sessão se não existir
+            # Inicializa as variáveis de controle no session_state se não existirem
             if 'ativos_sorteados_rodada' not in st.session_state:
                 st.session_state.ativos_sorteados_rodada = []
+            if 'ultima_qtd_sorteada' not in st.session_state:
+                st.session_state.ultima_qtd_sorteada = qtd_ativos_soteio
 
-            if st.button("🎲 Sortear Ativos") or not st.session_state.ativos_sorteados_rodada:
+            # Detecta se o usuário mudou a quantidade no input
+            mudou_quantidade = qtd_ativos_soteio != st.session_state.ultima_qtd_sorteada
+
+            # Sorteia se: clicou no botão OR não tem nada sorteado OR a quantidade mudou
+            if st.button("🎲 Sortear Ativos") or not st.session_state.ativos_sorteados_rodada or mudou_quantidade:
                 import random
-                qtd_a_sortear = min(2, len(restantes_no_ciclo))
+                qtd_a_sortear = min(qtd_ativos_soteio, len(restantes_no_ciclo))
                 st.session_state.ativos_sorteados_rodada = random.sample(restantes_no_ciclo, qtd_a_sortear)
+                
+                # Atualiza o estado com a nova quantidade que acabou de ser sorteada
+                st.session_state.ultima_qtd_sorteada = qtd_ativos_soteio
 
             if st.session_state.ativos_sorteados_rodada:
                 ativos_validos = [a for a in st.session_state.ativos_sorteados_rodada if a in restantes_no_ciclo]
@@ -280,7 +293,7 @@ def main():
                 c1.metric("Total a Alocar", f"R$ {total_simulado:,.2f}")
                 c2.metric("Sobra", f"R$ {sobra:,.2f}")
                 
-                st.table(df_rodada[['Ação', 'Preço', 'Sugerido (Cotas)', 'Subtotal']])
+                st.table(df_rodada[['Ação', 'Preço', 'Sugerido (Cotas)', 'Subtotal']], hide_index=True)
                 
                 if st.button("✅ Confirmar Aporte e Avançar"):
                     # 1. Salva no CSV os ativos desta rodada
