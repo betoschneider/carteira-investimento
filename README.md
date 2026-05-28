@@ -134,11 +134,31 @@ carteira-investimento/
 
 ## 📊 Como Funciona
 
-1. **Carregamento de Dados**: A aplicação lê a planilha Google Sheets configurada no arquivo `.env` e busca os tickers ativos
-2. **Busca de Preços**: Conecta à API Yahoo Finance para obter preços atualizados
-3. **Cálculo de Quantidade**: Com base no número de cotas inseridas, calcula quantas ações de cada ativo devem ser compradas
-4. **Análise de Carteira**: Exibe o total investido em cada ativo e seu percentual na carteira
-5. **Atualização Automática**: As alterações na planilha são refletidas automaticamente (com cache de 1 hora)
+1. **Carregamento de Dados**: A aplicação lê a planilha Google Sheets configurada no arquivo `.env` e busca os tickers ativos.
+2. **Busca de Preços**: Conecta à API Yahoo Finance para obter preços atualizados.
+3. **Cálculo de Quantidade**: Com base no número de cotas inseridas, calcula quantas ações de cada ativo devem ser compradas.
+4. **Análise de Carteira**: Exibe o total investido em cada ativo e seu percentual na carteira.
+5. **Atualização Automática**: As alterações na planilha são refletidas automaticamente (com cache de 1 hora).
+
+### Persistência de Ciclo (novo)
+
+- A aplicação agora mantém um arquivo local chamado `historico_ciclo.csv` que armazena os ativos já recebidos em cada rodada do "Sorteador de Ciclo".
+- Ao confirmar uma rodada no `Sorteador de Ciclo` (aba "Sorteador de Ciclo"), os ativos escolhidos são gravados em `historico_ciclo.csv` e serão removidos de todas as visualizações e sorteios subsequentes até o fim do ciclo.
+- Quando todos os ativos da carteira tiverem sido marcados no CSV, o sistema limpa automaticamente `historico_ciclo.csv` para reiniciar um novo ciclo.
+- Também existe um botão manual "Reiniciar Ciclo Completo (Limpar CSV)" na própria aba, que apaga o CSV e reinicia o ciclo.
+
+### Regras do Sorteador de Ciclo
+
+- O sorteador escolhe até **2 ativos aleatórios** por rodada dentre os ativos que ainda não foram aportados.
+- Por segurança, ao gerar a sugestão de compra, o sistema garante que cada ativo sorteado tenha **pelo menos 1 cota sugerida** (mesmo que o valor disponível seja inferior ao preço do ativo), evitando que ativos caros apareçam com 0 cotas.
+- O cálculo de cotas sugeridas divide o valor da rodada entre os ativos sorteados; o subtotal e a sobra são exibidos antes da confirmação.
+- Ao confirmar, os ativos são adicionados ao `historico_ciclo.csv`, a interface faz `st.rerun()` e os ativos deixam de aparecer nas abas até o próximo ciclo.
+
+### Observações sobre persistência em contêiner/Docker
+
+- Se executar via Docker, certifique-se de montar um volume ou diretório persistente se quiser manter `historico_ciclo.csv` entre reinicializações de container (por padrão o arquivo é criado dentro do diretório da aplicação no container).
+- O arquivo `.env` é montado no container via `docker-compose.yml` para que o `SHEET_ID` seja lido corretamente.
+
 
 ## 🛠️ Tecnologias Utilizadas
 

@@ -270,7 +270,7 @@ def main():
                 df_rodada = df[df['Ação'].isin(ativos_validos)].copy()
                 valor_por_ativo = valor_aporte / len(df_rodada)
                 
-                df_rodada['Sugerido (Cotas)'] = df_rodada['Preço'].apply(lambda x: int(valor_por_ativo // x))
+                df_rodada['Sugerido (Cotas)'] = df_rodada['Preço'].apply(lambda x: max(1, int(valor_por_ativo // x)))
                 df_rodada['Subtotal'] = round(df_rodada['Sugerido (Cotas)'] * df_rodada['Preço'], 2)
                 
                 total_simulado = df_rodada['Subtotal'].sum()
