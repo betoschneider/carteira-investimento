@@ -218,7 +218,7 @@ def main():
     with tab6:
         st.subheader("🎲 Sorteador de Aporte (Ciclo Fechado via CSV)")
         st.info("""
-        Esta simulação escolhe até **2 ativos aleatórios** por rodada. Ao confirmar, 
+        Esta simulação escolhe a quantidade definidade de ativos a serem sorteados por rodada. Ao confirmar, 
         eles são salvos em arquivo local e removidos de **todo o painel** até que o ciclo termine.
         """)
 
