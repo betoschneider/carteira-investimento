@@ -92,8 +92,8 @@ def main():
 
     # --- VISUALIZAÇÃO ---
     
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "TreeMap", "Equilíbrio Real", "Análise de Barras", "Dispersão de Peso", "Simulador de Aporte"
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "TreeMap", "Equilíbrio Real", "Análise de Barras", "Dispersão de Peso", "Simulador de Aporte", "Simulador de Aporte Aleatório"
     ])
 
     with tab1:
@@ -172,6 +172,90 @@ def main():
             
             # Exibição do Lote Sugerido
             st.table(df_simulacao[df_simulacao['Sugerido'] > 0].sort_values(by='Subtotal', ascending=False), hide_index=True)
+    with tab6:
+        st.subheader("🎲 Simulador de Aporte Aleatório (Ciclo Fechado)")
+        st.info("""
+        Insira o valor disponível. O sistema sugerirá até **2 ativos aleatórios**. 
+        A cada rodada confirmada, os ativos escolhidos saem do sorteio até que todos tenham recebido aportes, fechando o ciclo!
+        """)
+
+        # 1. Inicializa as variáveis no session_state caso não existam
+        # Pegamos a lista de ações disponíveis no DataFrame atual
+        lista_acoes_total = df['Ação'].tolist()
+
+        if 'ativos_restantes' not in st.session_state or st.button("🔄 Reiniciar Ciclo Completo"):
+            st.session_state.ativos_restantes = lista_acoes_total.copy()
+            st.session_state.ativos_sorteados_rodada = []
+            st.session_state.ciclo_finalizado = False
+
+        # Exibe o progresso do ciclo atual
+        total_ativos = len(lista_acoes_total)
+        restantes_qtd = len(st.session_state.ativos_restantes)
+        progresso = (total_ativos - restantes_qtd) / total_ativos
+        st.progress(progresso, text=f"Progresso do Ciclo: Investido em {total_ativos - restantes_qtd} de {total_ativos} ativos")
+
+        if st.session_state.ciclo_finalizado or restantes_qtd == 0:
+            st.success("🎉 Parabéns! Você completou o ciclo e passou por todos os ativos da sua carteira!")
+            if st.button("Iniciar Novo Ciclo"):
+                st.session_state.ativos_restantes = lista_acoes_total.copy()
+                st.session_state.ativos_sorteados_rodada = []
+                st.session_state.ciclo_finalizado = False
+                st.rerun()
+        else:
+            # Entrada do valor de aporte
+            valor_aporte = st.number_input("Valor total para investir nesta rodada (R$)", min_value=10.0, step=50.0, value=500.0)
+
+            # Botão para gerar a rodada (sortear)
+            # Sorteia apenas se ainda não houver um sorteio ativo para esta rodada ou se o usuário pedir para re-sortear dentro da mesma rodada
+            if st.button("🎲 Sortear Ativos para esta Rodada") or not st.session_state.ativos_sorteados_rodada:
+                import random
+                # Sorteia até 2 ativos dentre os que ainda restam
+                qtd_a_sortear = min(2, len(st.session_state.ativos_restantes))
+                st.session_state.ativos_sorteados_rodada = random.sample(st.session_state.ativos_restantes, qtd_a_sortear)
+
+            # Se temos ativos sorteados, mostra a sugestão de compra
+            if st.session_state.ativos_sorteados_rodada:
+                st.write(f"**Ativos selecionados para esta rodada:** {', '.join(st.session_state.ativos_sorteados_rodada)}")
+                
+                # Filtra o dataframe principal para conter apenas os sorteados
+                df_rodada = df[df['Ação'].isin(st.session_state.ativos_sorteados_rodada)].copy()
+                
+                # Divisão do dinheiro entre os ativos sorteados (metade para cada se forem 2)
+                valor_por_ativo_sorteado = valor_aporte / len(df_rodada)
+                
+                # Calcula quantas cotas inteiras dá para comprar
+                df_rodada['Sugerido (Cotas)'] = df_rodada['Preço'].apply(lambda x: int(valor_por_ativo_sorteado // x))
+                df_rodada['Subtotal'] = round(df_rodada['Sugerido (Cotas)'] * df_rodada['Preço'], 2)
+                
+                total_simulado = df_rodada['Subtotal'].sum()
+                sobra = valor_aporte - total_simulado
+                
+                # Exibe métricas da rodada
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Total a Ser Gasto", f"R$ {total_simulado:,.2f}")
+                c2.metric("Sobra do Caixa", f"R$ {sobra:,.2f}")
+                c3.metric("Ativos Restantes para Próximas Rodadas", f"{len(st.session_state.ativos_restantes) - len(df_rodada)}")
+                
+                # Tabela com a sugestão
+                st.table(df_rodada[['Ação', 'Preço', 'Sugerido (Cotas)', 'Subtotal']])
+                
+                # Botão para confirmar o investimento e eliminar estes ativos do pool
+                if st.button("✅ Confirmar Aporte e Avançar Rodada"):
+                    # Remove os ativos sorteados da lista de restantes
+                    for ativo in st.session_state.ativos_sorteados_rodada:
+                        if ativo in st.session_state.ativos_restantes:
+                            st.session_state.ativos_restantes.remove(ativo)
+                    
+                    # Limpa os sorteados para a próxima rodada forçar um novo sorteio
+                    st.session_state.ativos_sorteados_rodada = []
+                    
+                    # Verifica se acabou o ciclo inteiro
+                    if len(st.session_state.ativos_restantes) == 0:
+                        st.session_state.ciclo_finalizado = True
+                        
+                    st.toast("Rodada concluída! Ativos removidos do próximo sorteio.", icon="👍")
+                    time.sleep(1)
+                    st.rerun()
     
     st.markdown("---")
     st.markdown(f"""
