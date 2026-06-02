@@ -95,6 +95,9 @@ def main():
     df_display['Total Atual'] = df_display['Total Atual'].round(2)
     df_display['% Atual'] = df_display['% Atual'].round(1)
     df_display['Desvio'] = df_display['Desvio'].round(1)
+    df_display['Meta'] = df_display['Meta'].round(1)
+    df_display['Empresa'] = df_display.apply(lambda x: x['Empresa'] + " (" + x['Ativo'] + ")", axis=1)
+    df_display = df_display.drop(columns=['Ativo'])
     st.dataframe(df_display, hide_index=True)
 
     # --- NOVO: GRÁFICO DE BALANCEAMENTO POR DESVIO ---
