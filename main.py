@@ -49,9 +49,7 @@ def salvar_edicoes_editor():
 
 # --- LOGICA DE NEGOCIO ---
 
-def main():
-    st.set_page_config(page_title="Balanceador B3")
-    
+def page_main():
     # 1. Busca Dados e Cruzamento
     ticker_list = get_base_data()
     
@@ -73,60 +71,60 @@ def main():
         
     df_completo['Desvio'] = df_completo['% Atual'] - df_completo['Meta']
     
-    # Ordenação do maior desvio negativo (precisa comprar) para o maior positivo
     df_completo = df_completo.sort_values(by='Desvio', ascending=True)
     
     data_atualizacao = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
-    # --- UI ---
     st.title("📈 Carteira de investimento - B3")
     st.write(f"Última consulta à API: {data_atualizacao}")
 
-    # Painel de Métricas Gerais
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("Patrimônio Total", f"R$ {patrimonio_total:,.2f}")
-    with col2:
-        st.metric("Total de Ativos Monitorados", f"{len(df_completo)}")
-
-    # Exibição da Tabela Principal
-    st.subheader("📋 Situação Atual da Carteira")
-    df_display = df_completo[['Empresa', 'Ativo', 'Quantidade', 'Preço', 'Total Atual', 'Meta', '% Atual', 'Desvio']].copy()
-    df_display['Total Atual'] = df_display['Total Atual'].round(2)
-    df_display['% Atual'] = df_display['% Atual'].round(1)
-    df_display['Desvio'] = df_display['Desvio'].round(1)
-    df_display['Meta'] = df_display['Meta'].round(1)
-    df_display['Empresa'] = df_display.apply(lambda x: x['Empresa'] + " (" + x['Ativo'] + ")", axis=1)
-    df_display = df_display.drop(columns=['Ativo'])
-    st.dataframe(df_display, hide_index=True)
-
-    # --- NOVO: GRÁFICO DE BALANCEAMENTO POR DESVIO ---
-    st.markdown("---")
-    st.subheader("📊 Gráfico de Desvio da Meta Perfeita")
     
-    fig_eq = go.Figure()
-    fig_eq.add_trace(go.Bar(
-        x=df_completo['Desvio'], 
-        y=df_completo['Ativo'], 
-        orientation='h',
-        text=df_completo['Desvio'].round(1).apply(lambda x: f"{x}%"), 
-        textposition='auto',
-        marker_color='royalblue', 
-        name='Desvio Atual'
-    ))
-    # Linha vertical no 0 representando o equilíbrio perfeito da meta de cada ativo
-    fig_eq.add_vline(x=0, line_dash="dash", line_color="red", annotation_text="Equilíbrio Perfeito (Meta)")
-    
-    fig_eq.update_layout(
-        title="Quão longe o ativo está da Meta Estipulada? (Em % da Carteira)",
-        xaxis_title="Desvio ( % Atual - % Meta )",
-        yaxis={'categoryorder': 'total descending'}, # Traz os maiores desvios negativos para o topo
-        height=400 + (len(df_completo) * 20) # Ajusta altura dinamicamente conforme cresce a carteira
-    )
-    st.plotly_chart(fig_eq, use_container_width=True)
 
-    # --- PAINEL DE APORTE AUTOMÁTICO ---
+    c10, c20 = st.columns(2)
+    with c10:
+        st.subheader("📋 Situação Atual da Carteira")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Patrimônio Total", f"R$ {patrimonio_total:,.2f}")
+        with col2:
+            st.metric("Total de Ativos Monitorados", f"{len(df_completo)}")
+        
+        df_display = df_completo[['Empresa', 'Ativo', 'Quantidade', 'Preço', 'Total Atual', 'Meta', '% Atual', 'Desvio']].copy()
+        df_display['Total Atual'] = df_display['Total Atual'].round(2)
+        df_display['% Atual'] = df_display['% Atual'].round(1)
+        df_display['Desvio'] = df_display['Desvio'].round(1)
+        df_display['Meta'] = df_display['Meta'].round(1)
+        df_display['Empresa'] = df_display.apply(lambda x: x['Empresa'] + " (" + x['Ativo'] + ")", axis=1)
+        df_display = df_display.drop(columns=['Ativo'])
+        st.dataframe(df_display, hide_index=True, height=400 + (len(df_completo) * 15))
+
+    # st.markdown("---")
+    
+    with c20:
+        st.subheader("📊 Gráfico de Desvio da Meta Perfeita")
+        
+        fig_eq = go.Figure()
+        fig_eq.add_trace(go.Bar(
+            x=df_completo['Desvio'], 
+            y=df_completo['Ativo'], 
+            orientation='h',
+            text=df_completo['Desvio'].round(1).apply(lambda x: f"{x}%"), 
+            textposition='auto',
+            marker_color='royalblue', 
+            name='Desvio Atual'
+        ))
+        fig_eq.add_vline(x=0, line_dash="dash", line_color="red", annotation_text="Equilíbrio Perfeito (Meta)")
+        
+        fig_eq.update_layout(
+            title="Quão longe o ativo está da Meta Estipulada? (Em % da Carteira)",
+            xaxis_title="Desvio ( % Atual - % Meta )",
+            yaxis={'categoryorder': 'total descending'},
+            height=400 + (len(df_completo) * 20)
+        )
+        st.plotly_chart(fig_eq, use_container_width=True)
+
     st.markdown("---")
+    
     st.subheader("🎯 Sugestão de Aporte Otimizado")
     st.write("Altere a quantidade de cotas diretamente na tabela. Os valores estão protegidos ao confirmar o aporte.")
 
@@ -171,7 +169,9 @@ def main():
             }
         )
         
-        if st.button("✅ Confirmar Aporte e Atualizar CSV"):
+        aprovado_para_gravar = st.checkbox("Estou ciente e desejo gravar estes valores no CSV (destravar botão)")
+
+        if st.button("✅ Confirmar Aporte e Atualizar CSV", disabled=not aprovado_para_gravar):
             df_base_original = pd.read_csv('carteira.csv')
             
             for _, row in st.session_state.df_aporte_atual.iterrows():
@@ -191,6 +191,24 @@ def main():
             
     st.markdown("---")
     st.markdown("Desenvolvido por [Beto Schneider](https://betoschneider.com)")
+
+
+def main():
+    st.set_page_config(
+        page_title="Balanceador B3",
+        page_icon="📈",
+        layout="wide",
+        initial_sidebar_state="collapsed"
+    )
+
+    pages = [
+        st.Page(page_main, title="Principal", icon="🏠", default=True),
+        st.Page("pages/1_Controle.py", title="Controle", icon="⚙️")
+    ]
+
+    selected_page = st.navigation(pages, position="sidebar", expanded=True)
+    selected_page.run()
+
 
 if __name__ == "__main__":
     main()

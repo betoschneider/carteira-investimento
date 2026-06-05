@@ -17,6 +17,8 @@ O projeto lê uma base local em `carteira.csv`, atualiza preços dos ativos via 
 - **Edição interativa das cotas sugeridas** diretamente na tabela com `st.data_editor`
 - **Confirmação de aporte** que atualiza `carteira.csv` com as novas quantidades
 - **Persistência local** do estoque de ativos via atualização do CSV
+ - **Proteção contra gravação acidental**: checkbox de confirmação para destravar o botão de confirmação antes de sobrescrever `carteira.csv`
+ - **Página de Controle (Governança)**: nova página `pages/1_Controle.py` com editor completo do CSV, validação da soma de `Meta` e botão para salvar alterações manualmente
 
 ## 📄 Estrutura de dados esperada
 
@@ -59,6 +61,19 @@ docker-compose up --build
 A aplicação ficará disponível em `http://localhost:8501`.
 
 > Se usar Docker, é recomendável montar `carteira.csv` como volume para manter os dados entre reinicializações do container.
+
+## 🧭 Nova Página de Governança (Controle)
+
+Foi adicionada uma nova página para gerenciamento e auditoria dos dados em `pages/1_Controle.py`.
+
+- **Acessar**: a página aparece no menu lateral do Streamlit como "1_Controle".
+- **Funcionalidades**:
+	- Carrega o `carteira.csv` e exibe um `st.data_editor` para edição direta.
+	- Ordena por `Quantidade` desc por padrão.
+	- Exibe a soma da coluna `Meta` como métrica; se a soma não for 100%, aparece um aviso para revisão.
+	- Botão `💾 Salvar Alterações na Carteira` regrava o arquivo `carteira.csv` com as alterações feitas.
+
+Use esta página para correções manuais, validações e auditoria antes de aplicar aportes via a página principal.
 
 ## 📊 Como funciona
 
