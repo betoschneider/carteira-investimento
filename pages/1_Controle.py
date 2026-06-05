@@ -30,14 +30,15 @@ def page_controle():
             st.warning("Não foi possível somar a coluna 'Meta' — verifique o formato dos valores.")
         else:
             st.metric("Soma das Metas (%)", f"{soma_meta:.1f}%")
-            if abs(soma_meta - 100.0) > 0.001:
+            if f"{soma_meta:.1f}" != "100.0":
                 st.warning("A soma das metas não é 100%. Revise a distribuição de metas antes de salvar.")
 
         edited = st.data_editor(
             df,
             key="controle_editor",
             num_rows="dynamic",
-            use_container_width=True
+            use_container_width=True,
+            hide_index=True
         )
 
         # Counter para forçar recriação do checkbox após salvar
