@@ -13,7 +13,7 @@ def page_controle():
         df = pd.read_csv(STORAGE_FILE)
         # Ordena por quantidade desc como solicitado
         if 'Quantidade' in df.columns:
-            df = df.sort_values(by='Quantidade', ascending=False)
+            df = df.sort_values(by='Quantidade', ascending=False).reset_index(drop=True)
 
         st.subheader("📋 Auditoria e Edição Rápida")
         st.write("Edite os campos diretamente e salve as alterações para atualizar a carteira principal.")
