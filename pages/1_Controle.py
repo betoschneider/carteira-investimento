@@ -38,7 +38,8 @@ def page_controle():
             key="controle_editor",
             num_rows="dynamic",
             use_container_width=True,
-            hide_index=True
+            hide_index=True,
+            height=400 + (len(df) * 18)
         )
 
         # Counter para forçar recriação do checkbox após salvar
