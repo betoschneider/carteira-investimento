@@ -78,8 +78,6 @@ def page_main():
     st.title("📈 Carteira de investimento - B3")
     st.write(f"Última consulta à API: {data_atualizacao}")
 
-    
-
     c10, c20 = st.columns(2)
     with c10:
         st.subheader("📋 Situação Atual da Carteira")
@@ -97,8 +95,6 @@ def page_main():
         df_display['Empresa'] = df_display.apply(lambda x: x['Ativo'] + " (" + x['Empresa'] + ")", axis=1)
         df_display = df_display.drop(columns=['Ativo'])
         st.dataframe(df_display, hide_index=True, height=400 + (len(df_completo) * 15))
-
-    # st.markdown("---")
     
     with c20:
         st.subheader("📊 Gráfico de Desvio da Meta Perfeita")
@@ -143,7 +139,8 @@ def page_main():
         valor_por_ativo = valor_aporte / len(df_sugeridos) if qtd_ativos_sugeridos > 0 else 0
         
         df_sugeridos['Sugerido (Cotas)'] = df_sugeridos['Preço'].apply(lambda x: max(1, int(valor_por_ativo // x)))
-        st.session_state.df_aporte_atual = df_sugeridos[['Ativo', 'Preço', 'Sugerido (Cotas)']].copy()
+        # Preservamos Quantidade (antiga) e Meta no State para viabilizar o cálculo do Novo Desvio
+        st.session_state.df_aporte_atual = df_sugeridos[['Ativo', 'Preço', 'Quantidade', 'Meta', 'Sugerido (Cotas)']].copy()
 
     if "df_aporte_atual" in st.session_state and not st.session_state.df_aporte_atual.empty:
         df_renderizar = st.session_state.df_aporte_atual.copy()
@@ -152,12 +149,26 @@ def page_main():
         total_simulado = df_renderizar['Subtotal'].sum()
         sobra = valor_aporte - total_simulado
         
+        # --- CÁLCULO REATIVO DO NOVO DESVIO SIMULADO ---
+        novo_patrimonio_total = patrimonio_total + total_simulado
+        
+        # Simula a nova alocação e o novo desvio considerando as cotas que estão na tabela
+        df_renderizar['Nova Qtd'] = df_renderizar['Quantidade'] + df_renderizar['Sugerido (Cotas)']
+        df_renderizar['Novo Total Ativo'] = df_renderizar['Nova Qtd'] * df_renderizar['Preço']
+        
+        if novo_patrimonio_total > 0:
+            df_renderizar['Novo %'] = (df_renderizar['Novo Total Ativo'] / novo_patrimonio_total) * 100
+        else:
+            df_renderizar['Novo %'] = 0.0
+            
+        df_renderizar['Novo Desvio'] = round(df_renderizar['Novo %'] - df_renderizar['Meta'], 1)
+        
         c1, c2 = st.columns(2)
         c1.metric("Total a Alocar", f"R$ {total_simulado:,.2f}")
         c2.metric("Sobra em Caixa", f"R$ {sobra:,.2f}")
         
         st.data_editor(
-            df_renderizar[['Ativo', 'Preço', 'Sugerido (Cotas)', 'Subtotal']],
+            df_renderizar[['Ativo', 'Preço', 'Sugerido (Cotas)', 'Subtotal', 'Novo Desvio']],
             hide_index=True,
             key="meu_data_editor",
             on_change=salvar_edicoes_editor,
@@ -165,11 +176,19 @@ def page_main():
                 "Ativo": st.column_config.TextColumn("Ativo", disabled=True),
                 "Preço": st.column_config.NumberColumn("Preço (R$)", format="R$ %.2f", disabled=True),
                 "Sugerido (Cotas)": st.column_config.NumberColumn("Sugerido (Cotas)", min_value=0, step=1),
-                "Subtotal": st.column_config.NumberColumn("Subtotal (R$)", format="R$ %.2f", disabled=True)
+                "Subtotal": st.column_config.NumberColumn("Subtotal (R$)", format="R$ %.2f", disabled=True),
+                "Novo Desvio": st.column_config.NumberColumn("Novo Desvio (%)", format="%.1f%%", disabled=True)
             }
         )
         
-        aprovado_para_gravar = st.checkbox("Estou ciente e desejo gravar estes valores no CSV (destravar botão)")
+        # --- GERENCIADOR DE RESET DO CHECKBOX ---
+        if "main_checkbox_counter" not in st.session_state:
+            st.session_state.main_checkbox_counter = 0
+
+        aprovado_para_gravar = st.checkbox(
+            "Estou ciente e desejo gravar estes valores no CSV (destravar botão)",
+            key=f"aprovado_gravar_{st.session_state.main_checkbox_counter}"
+        )
 
         if st.button("✅ Confirmar Aporte e Atualizar CSV", disabled=not aprovado_para_gravar):
             df_base_original = pd.read_csv('carteira.csv')
@@ -182,8 +201,10 @@ def page_main():
             colunas_originais = ['Empresa', 'Ativo', 'Quantidade', 'Meta', 'Ramo', 'Grupo']
             df_base_original[colunas_originais].to_csv('carteira.csv', index=False)
             
+            # Limpa estados de simulação e incrementa o contador para desmarcar o checkbox
             del st.session_state.df_aporte_atual
             del st.session_state.last_config_id
+            st.session_state.main_checkbox_counter += 1
             
             st.toast("Aporte integrado com sucesso!", icon="💾")
             time.sleep(1)
