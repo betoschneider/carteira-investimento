@@ -20,6 +20,7 @@ dependencies = [
     { name = "pandas" },
     { name = "plotly" },
     { name = "streamlit" },
+    { name = "streamlit-cookies-controller" },
     { name = "yfinance" },
 ]
 
@@ -30,6 +31,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=3.0.2" },
     { name = "plotly", specifier = ">=6.7.0" },
     { name = "streamlit", specifier = ">=1.56.0" },
+    { name = "streamlit-cookies-controller", specifier = ">=0.0.4" },
     { name = "yfinance", specifier = ">=1.3.0" },
 ]
 
@@ -994,6 +996,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/03/85/7c669b3a1336d34ef39fa9760fbd343185f3b15db2ad0838fd78423d1c7f/streamlit-1.56.0.tar.gz", hash = "sha256:1176acfa89ae1318b79078e8efe689a9d02e8d58e325c00fc0e55fa2f3fe8d6a", size = 8559239, upload-time = "2026-03-31T22:29:38.59Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e4/91/cb6f13a89e376ef179309d74f37a70ea0041d5e4b5ba5c4836dbf6e020ad/streamlit-1.56.0-py3-none-any.whl", hash = "sha256:8677a335734a30a51bc57ad0ec910e365d95f7c456fc02c60032927cd0729dc5", size = 9052089, upload-time = "2026-03-31T22:29:36.342Z" },
+]
+
+[[package]]
+name = "streamlit-cookies-controller"
+version = "0.0.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "streamlit" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b0/c8/7caf505d62faeb8c0f6e6b74b554e1c2b0c3ca46c0a39250445c574a5a18/streamlit-cookies-controller-0.0.4.tar.gz", hash = "sha256:f5df2543de858f1585dcb6e90f58f38aafbf313ee8e237c64663b2d9761583cc", size = 406305, upload-time = "2024-04-10T03:50:35.813Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/02/c6/3bbdfecf5009943bcb62d37e3fd4b3fe45e87137e449a50e3025170bc9f7/streamlit_cookies_controller-0.0.4-py3-none-any.whl", hash = "sha256:f97fec6acdeee9cb9e16da25c3fc91d404b5b0ddced87c1d9fa9c62f65ca3251", size = 409303, upload-time = "2024-04-10T03:50:33.458Z" },
 ]
 
 [[package]]

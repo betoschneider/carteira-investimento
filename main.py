@@ -2,11 +2,15 @@ import yfinance as yf
 import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 import os
 import hmac
 from dotenv import load_dotenv
+from streamlit_cookies_controller import CookieController
+
+# Inicializa o controlador de cookies
+controller = CookieController()
 
 # Carrega variáveis de ambiente do arquivo .env
 load_dotenv()
@@ -51,18 +55,21 @@ def salvar_edicoes_editor():
                 st.session_state.df_aporte_atual.iloc[idx, st.session_state.df_aporte_atual.columns.get_loc("Sugerido (Cotas)")] = updates["Sugerido (Cotas)"]
 
 # --- AUTENTICAÇÃO ---
+
 @st.dialog("🔐 Autenticação")
 def dialog_autenticacao():
-    """Diálogo modal para autenticação via token de acesso.
-
-    Compara o token informado com ACCESS_TOKEN do .env usando
-    comparação segura (hmac.compare_digest) para evitar timing attacks.
-    Seta `st.session_state.autenticado = True` se o token for válido.
-    """
+    """Diálogo modal para autenticação via token de acesso."""
     st.markdown("Informe o token de acesso para continuar.")
     token_input = st.text_input("Token:", type="password", key="token_input")
     if st.button("Entrar", type="primary", use_container_width=True):
         if token_input and hmac.compare_digest(token_input, ACCESS_TOKEN):
+            # 1. Define o tempo de expiração (Ex: válido por 2 horas)
+            validade = (datetime.now() + timedelta(hours=2)).isoformat()
+
+            # 2. Salva no Cookie do navegador
+            controller.set("token_validade", validade)
+
+            # 3. Atualiza o session_state para resposta imediata
             st.session_state.autenticado = True
             st.rerun()
         else:
@@ -243,11 +250,34 @@ def main():
         initial_sidebar_state="collapsed"
     )
 
-    # --- INICIO DA ROTINA DE BLOQUEIO (NO TOPO DO MAIN) ---
-    # Se não estiver autenticado, força a abertura do diálogo e para a execução.
+    # --- INICIO DA ROTINA DE BLOQUEIO ATUALIZADA ---
+
+    # 1. Verifica se já está autenticado na sessão atual (evita ler o cookie toda hora)
+    if not st.session_state.get("autenticado", False):
+
+        # 2. Se não está no session_state, busca a informação no Cookie
+        cookie_validade = controller.get("token_validade")
+
+        if cookie_validade:
+            try:
+                # Converte o texto do cookie de volta para datetime
+                data_expiracao = datetime.fromisoformat(cookie_validade)
+
+                # 3. Se a data atual for menor que a expiração, revalida a sessão
+                if datetime.now() < data_expiracao:
+                    st.session_state.autenticado = True
+                else:
+                    # Token expirou, remove o cookie velho
+                    controller.remove("token_validade")
+            except ValueError:
+                pass  # Trata erro caso o cookie esteja corrompido
+
+    # 4. Se passou pelos testes e CONTINUA falso, abre o dialog
     if not st.session_state.get("autenticado", False):
         dialog_autenticacao()
         st.stop()
+
+    # --- FIM DA ROTINA DE BLOQUEIO ---
 
     pages = [
         st.Page(page_main, title="Principal", icon="🏠", default=True),
