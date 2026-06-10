@@ -8,6 +8,7 @@ O projeto lê uma base local em `carteira.csv`, atualiza preços dos ativos via 
 
 ## ✨ Funcionalidades atuais
 
+- **Autenticação de acesso**: proteção da interface com diálogo modal e validação via token de acesso configurado no `.env`
 - **Leitura local da carteira** a partir de `carteira.csv`
 - **Atualização de preços em tempo real** via `yfinance`
 - **Cálculo de patrimônio atual** e percentual de cada ativo
@@ -17,8 +18,8 @@ O projeto lê uma base local em `carteira.csv`, atualiza preços dos ativos via 
 - **Edição interativa das cotas sugeridas** diretamente na tabela com `st.data_editor`
 - **Confirmação de aporte** que atualiza `carteira.csv` com as novas quantidades
 - **Persistência local** do estoque de ativos via atualização do CSV
- - **Proteção contra gravação acidental**: checkbox de confirmação para destravar o botão de confirmação antes de sobrescrever `carteira.csv`
- - **Página de Controle (Governança)**: nova página `pages/1_Controle.py` com editor completo do CSV, validação da soma de `Meta` e botão para salvar alterações manualmente
+- **Proteção contra gravação acidental**: checkbox de confirmação para destravar o botão de confirmação antes de sobrescrever `carteira.csv`
+- **Página de Controle (Governança)**: nova página `pages/1_Controle.py` com editor completo do CSV, validação da soma de `Meta` e botão para salvar alterações manualmente
 
 ## 📄 Estrutura de dados esperada
 
@@ -43,24 +44,40 @@ Vale,VALE3,50,12,Mineração,Setor 2
 
 ### Instalação local
 
-```bash
-git clone <repositório>
-cd carteira-investimento
-uv sync
-uv run streamlit run main.py
-```
+1. Clone o repositório e navegue até a pasta do projeto:
+   ```bash
+   git clone <repositório>
+   cd carteira-investimento
+   ```
 
-A aplicação abrirá em seu navegador em `http://localhost:8501`.
+2. Crie e configure o arquivo `.env` a partir do modelo `.env.example`:
+   ```bash
+   cp .env.example .env
+   ```
+   Abra o arquivo `.env` e defina um valor para o token de acesso:
+   ```env
+   ACCESS_TOKEN=seu_token_secreto_aqui
+   ```
+
+3. Instale as dependências e execute a aplicação Streamlit:
+   ```bash
+   uv sync
+   uv run streamlit run main.py
+   ```
+
+A aplicação abrirá em seu navegador no endereço `http://localhost:8501`.
 
 ### Com Docker
 
-```bash
-docker-compose up --build
-```
+1. Crie o arquivo `.env` conforme instruído no passo anterior.
+2. Inicie o container utilizando o Docker Compose:
+   ```bash
+   docker-compose up --build
+   ```
 
 A aplicação ficará disponível em `http://localhost:8501`.
 
-> Se usar Docker, é recomendável montar `carteira.csv` como volume para manter os dados entre reinicializações do container.
+> **Nota**: Ao rodar com Docker, o arquivo `.env` será carregado automaticamente e o arquivo `carteira.csv` é montado como volume para manter a persistência dos dados entre as execuções do container.
 
 ## 🧭 Nova Página de Governança (Controle)
 
@@ -74,6 +91,14 @@ Foi adicionada uma nova página para gerenciamento e auditoria dos dados em `pag
 	- Botão `💾 Salvar Alterações na Carteira` regrava o arquivo `carteira.csv` com as alterações feitas.
 
 Use esta página para correções manuais, validações e auditoria antes de aplicar aportes via a página principal.
+
+## 🔐 Autenticação
+
+A aplicação conta com uma rotina de proteção de acesso baseada em token de segurança:
+
+- **Funcionamento**: Caso o usuário ainda não esteja autenticado, um diálogo modal do Streamlit (`st.dialog`) será exibido por cima da aplicação, bloqueando a interação com a página principal e ocultando o menu lateral.
+- **Validação com Timing Attack Mitigation**: O token inserido pelo usuário é comparado com o `ACCESS_TOKEN` configurado nas variáveis de ambiente utilizando a função `hmac.compare_digest`. Isso impede que ataques de tempo (*timing attacks*) possam ser usados para inferir o token.
+- **Estado de Sessão**: Após uma validação bem-sucedida, o estado da sessão (`st.session_state.autenticado = True`) é gravado e a visualização do painel principal e do painel de controle é liberada.
 
 ## 📊 Como funciona
 
