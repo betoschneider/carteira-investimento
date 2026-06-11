@@ -5,13 +5,13 @@ services:
       - 8.8.8.8
       - 1.1.1.1
     ports:
-      - "8501:8501"
+      - "8521:8521"
     volumes:
       - ./.env:/app/.env
       - ./carteira.csv:/app/carteira.csv
       - ~/.streamlit:/root/.streamlit
     environment:
       - STREAMLIT_SERVER_HEADLESS=true
-      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_PORT=8521
       - STREAMLIT_SERVER_ADDRESS=0.0.0.0
     restart: unless-stopped
